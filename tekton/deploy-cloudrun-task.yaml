@@ -1,0 +1,18 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: deploy-cloudrun
+spec:
+  params:
+    - name: IMAGE
+    - name: SERVICE
+    - name: REGION
+  steps:
+    - name: deploy
+      image: gcr.io/google.com/cloudsdktool/cloud-sdk
+      script: |
+        gcloud run deploy $(params.SERVICE) \
+          --image=$(params.IMAGE) \
+          --region=$(params.REGION) \
+          --platform=managed \
+          --allow-unauthenticated

@@ -1,0 +1,46 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: springboot-cloudrun-pipeline
+spec:
+  params:
+    - name: git-url
+    - name: git-revision
+    - name: image-url
+    - name: service-name
+    - name: region
+  workspaces:
+    - name: shared-workspace
+  tasks:
+    - name: clone-repo
+      taskRef:
+        name: git-clone
+      workspaces:
+        - name: output
+          workspace: shared-workspace
+      params:
+        - name: url
+          value: $(params.git-url)
+        - name: revision
+          value: $(params.git-revision)
+    - name: build-image
+      runAfter: [clone-repo]
+      taskRef:
+        name: build-docker
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+      params:
+        - name: IMAGE
+          value: $(params.image-url)
+    - name: deploy-service
+      runAfter: [build-image]
+      taskRef:
+        name: deploy-cloudrun
+      params:
+        - name: IMAGE
+          value: $(params.image-url)
+        - name: SERVICE
+          value: $(params.service-name)
+        - name: REGION
+          value: $(params.region)

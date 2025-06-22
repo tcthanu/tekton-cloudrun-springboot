@@ -1,0 +1,28 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: springboot-cloudrun-run
+spec:
+  pipelineRef:
+    name: springboot-cloudrun-pipeline
+  params:
+    - name: git-url
+      value: https://github.com/sreenath20/tekton-cloudrun-springboot.git
+    - name: git-revision
+      value: main
+    - name: image-url
+      value: us-central1-docker.pkg.dev/br1ghter-sun/demo-repo/tekton-demo:latest
+    - name: service-name
+      value: tekton-springboot-demo
+    - name: region
+      value: us-central1
+  workspaces:
+    - name: shared-workspace
+      volumeClaimTemplate:
+        metadata:
+          name: shared-workspace-pvc
+        spec:
+          accessModes: [ "ReadWriteOnce" ]
+          resources:
+            requests:
+              storage: 1Gi
