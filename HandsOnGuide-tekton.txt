@@ -48,7 +48,7 @@ gcloud container clusters list
 Authenticate kubectl to use your cluster:
 
 gcloud container clusters get-credentials tekton-cluster \
-  --region=us-central1 \
+  --region=us-central1-a \
   --project=$PROJECT_ID
 
 
