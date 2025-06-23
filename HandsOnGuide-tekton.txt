@@ -1,0 +1,117 @@
+
+Set env:
+
+PROJECT_ID=$(gcloud config get-value project)
+REGION=us-central1
+REPO_NAME=spring-app-repo
+IMAGE_NAME=spring-app
+SERVICE_NAME=springboot-app
+
+Enable required services:
+gcloud services enable run.googleapis.com \
+    artifactregistry.googleapis.com \
+    cloudbuild.googleapis.com \
+    container.googleapis.com \
+    iam.googleapis.com
+Create Artifact Registry
+gcloud artifacts repositories create $REPO_NAME \
+  --repository-format=docker \
+  --location=$REGION \
+  --description="Spring Boot Docker Repo"
+
+Create Service Account for Tekton:
+gcloud iam service-accounts create tekton-sa \
+  --display-name="Tekton CI/CD Service Account"
+
+Assign Roles:
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+  --member="serviceAccount:tekton-sa@$PROJECT_ID.iam.gserviceaccount.com" \
+  --role="roles/run.admin"
+
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+  --member="serviceAccount:tekton-sa@$PROJECT_ID.iam.gserviceaccount.com" \
+  --role="roles/artifactregistry.writer"
+
+gcloud iam service-accounts keys create key.json \
+  --iam-account=tekton-sa@$PROJECT_ID.iam.gserviceaccount.com
+
+Create a GKE Cluster:
+
+gcloud container clusters create tekton-cluster \
+  --zone=us-central1-a \
+  --num-nodes=2
+
+List All Clusters:
+gcloud container clusters list
+
+
+Authenticate kubectl to use your cluster:
+
+gcloud container clusters get-credentials tekton-cluster \
+  --region=us-central1 \
+  --project=$PROJECT_ID
+
+
+verify:
+kubectl get nodes
+o/p :
+NAME                                            STATUS   ROLES    AGE     VERSION
+gk3-tekton-cluster-nap-14vack3y-7c540807-nh6t   Ready    <none>   8m58s   v1.32.4-gke.1415000
+
+
+Create GKE secret from key.json:
+
+kubectl create secret generic gcp-sa-secret \
+  --from-file=key.json
+
+Install Tekton in GKE:
+
+Get container admin access:
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+  --member="user:sreenathbr20@gmail.com" \
+  --role="roles/container.admin"
+
+create a Kubernetes cluster-admin
+kubectl create clusterrolebinding cluster-admin-binding \
+  --clusterrole=cluster-admin \
+  --user=sreenathbr20@gmail.com
+
+install tekton pipe line:
+
+kubectl apply -f https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml
+
+install tekton Trigger:
+
+kubectl apply -f https://storage.googleapis.com/tekton-releases/triggers/latest/release.yaml
+Verify:
+kubectl get pods --namespace tekton-pipelines
+
+ 
+
+| Command                           | Purpose                                 |
+| --------------------------------- | --------------------------------------- |
+| `kubectl get pods`                | List all pods                           |
+| `kubectl get svc`                 | List services                           |
+| `kubectl get deployment`          | List deployments                        |
+| `kubectl describe pod <pod-name>` | Get detailed info on a pod              |
+| `kubectl logs <pod-name>`         | View pod logs                           |
+| `kubectl apply -f <file.yaml>`    | Apply a YAML configuration              |
+| `kubectl delete -f <file.yaml>`   | Delete resources defined in the YAML    |
+| `kubectl get all`                 | View all resources in default namespace |
+
+
+
+
+kubectl apply -f tekton/git-clone-task.yaml
+kubectl apply -f tekton/build-docker-task.yaml
+kubectl apply -f tekton/deploy-cloudrun-task.yaml
+kubectl apply -f tekton/springboot-cloudrun-pipeline.yaml
+kubectl apply -f tekton/springboot-cloudrun-pipelinerun.yaml
+
+kubectl get taskruns
+
+kubectl delete tasks --all
+
+tkn pipelinerun describe springboot-cloudrun-run
+
+tkn pipelinerun logs springboot-cloudrun-run -f
